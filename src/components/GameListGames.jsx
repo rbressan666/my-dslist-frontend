@@ -52,7 +52,7 @@ function GameListGames() {
   useEffect(() => {
     const fetchGamesByList = async () => {
       try {
-        const response = await axios.get(`http://localhost:8080/lists/${listId}/games` );
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/lists/${listId}/games`);
         setGames(response.data);
       } catch (err) {
         setError(err);
@@ -78,10 +78,10 @@ function GameListGames() {
 
       // Chama a API do backend para salvar a nova ordem
       try {
-        await axios.post(`http://localhost:8080/lists/${listId}/replacement`, {
-          sourceIndex: oldIndex,
-          destinationIndex: newIndex
-        } );
+            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/lists/${listId}/replacement`, {
+            sourceIndex: oldIndex,
+            destinationIndex: newIndex
+            });
       } catch (err) {
         console.error("Erro ao atualizar a ordem no backend:", err);
         // Opcional: reverter a mudança se a API falhar

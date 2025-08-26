@@ -12,7 +12,7 @@ function GameDetails() {
     const fetchGameDetails = async () => {
       try {
         // Substitua pela URL do seu backend no Render quando for para produção
-        const response = await axios.get(`http://localhost:8080/games/${id}` );
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/games/${id}`);
         setGame(response.data);
       } catch (err) {
         setError(err);
