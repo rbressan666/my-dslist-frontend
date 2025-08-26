@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-// 1. Importe do dnd-kit
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import './GameListGames.css';
 
-// 2. Componente de Item Arrastável (separado para clareza)
+// Componente de Item Arrastável (separado para clareza)
 function SortableGameItem({ game, onClick }) {
   const {
     attributes,
@@ -23,14 +22,42 @@ function SortableGameItem({ game, onClick }) {
     transition,
   };
 
+  // Adicionamos um pequeno atraso para diferenciar clique de arrasto
+  // Se o mouse se mover muito ou por muito tempo, é um arrasto, senão é um clique.
+  const [isDragging, setIsDragging] = useState(false);
+  const [clickTimeout, setClickTimeout] = useState(null);
+
+  const handleMouseDown = (e) => {
+    // Inicia um timer para verificar se é um clique ou arrasto
+    setClickTimeout(setTimeout(() => {
+      setIsDragging(true);
+    }, 150)); // 150ms de atraso para considerar arrasto
+  };
+
+  const handleMouseUp = (e) => {
+    clearTimeout(clickTimeout);
+    if (!isDragging) {
+      // Se não estava arrastando, é um clique
+      onClick(game.id);
+    }
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    clearTimeout(clickTimeout);
+    setIsDragging(false);
+  };
+
   return (
     <li
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners} // listeners para o drag handle
+      {...attributes} // Atributos de acessibilidade e ARIA
+      {...listeners} // Listeners para o drag handle (mousedown, mouseup, etc.)
       className="game-li"
-      onClick={() => onClick(game.id)} // Mantém o clique para detalhes
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
     >
       <img src={game.imgUrl} alt={game.title} className="game-img" />
       <div className="game-info">
@@ -64,7 +91,6 @@ function GameListGames() {
     fetchGamesByList();
   }, [listId]);
 
-  // 3. Função para lidar com o final do arrastar (lógica do dnd-kit)
   const handleDragEnd = async (event) => {
     const { active, over } = event;
 
@@ -72,20 +98,17 @@ function GameListGames() {
       const oldIndex = games.findIndex((game) => game.id === active.id);
       const newIndex = games.findIndex((game) => game.id === over.id);
 
-      // Atualiza o estado local para o frontend refletir a mudança imediatamente
       const newOrder = arrayMove(games, oldIndex, newIndex);
       setGames(newOrder);
 
-      // Chama a API do backend para salvar a nova ordem
       try {
-            await axios.post(`${import.meta.env.VITE_API_BASE_URL}/lists/${listId}/replacement`, {
-            sourceIndex: oldIndex,
-            destinationIndex: newIndex
-            });
+        await axios.post(`${import.meta.env.VITE_API_BASE_URL}/lists/${listId}/replacement`, {
+          sourceIndex: oldIndex,
+          destinationIndex: newIndex
+        });
       } catch (err) {
         console.error("Erro ao atualizar a ordem no backend:", err);
-        // Opcional: reverter a mudança se a API falhar
-        setGames(games);
+        setGames(games); // Reverte a mudança no frontend se a API falhar
       }
     }
   };
@@ -103,10 +126,8 @@ function GameListGames() {
       <h1>Jogos da Lista (Arraste para reordenar)</h1>
       <button onClick={() => navigate('/')}>Voltar para Listas</button>
 
-      {/* 4. Envolve a lista com o DndContext */}
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <ul className="games-ul">
-          {/* 5. Envolve os itens com o SortableContext */}
           <SortableContext items={games} strategy={verticalListSortingStrategy}>
             {games.map(game => (
               <SortableGameItem key={game.id} game={game} onClick={handleGameClick} />
